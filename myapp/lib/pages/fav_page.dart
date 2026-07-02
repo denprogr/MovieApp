@@ -1,114 +1,80 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-
+import 'package:hive_flutter/hive_flutter.dart';
+import '../models/movie.dart';
+import '../services/local_storage_service.dart';
 import 'movie_detail_page.dart';
-import '../data/movie_data.dart';
 
-class FavoritePage extends StatelessWidget {
-  final List<Map<String, String>> favoriteMovies;
-
-  const FavoritePage({super.key, required this.favoriteMovies});
+class FavPage extends StatelessWidget {
+  const FavPage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final localStorageService = LocalStorageService();
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('My Favorites', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: favoriteMovies.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.favorite_border, size: 100, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            const Text(
-              'No Favorites Yet',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Film yang kamu sukai akan muncul di sini.',
-              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-            ),
-          ],
-        ),
-      )
-          : ListView.builder(
-        itemCount: favoriteMovies.length,
-        itemBuilder: (context, index) {
-          final movie = favoriteMovies[index];
+      appBar: AppBar(title: const Text('Favorit')),
+      // StreamBuilder di sini listen langsung ke perubahan Hive box.
+      // Jadi begitu ada film yang di-toggle favorite di halaman detail,
+      // list ini otomatis update tanpa perlu manual refresh/setState.
+      body: StreamBuilder<BoxEvent>(
+        stream: localStorageService.watchFavorites(),
+        builder: (context, snapshot) {
+          final favorites = localStorageService.getFavorites();
 
-          // 2. CARI INDEX ASLI FILM DI DALAM MOVIEDATA AGAR SINKRON DENGAN BLOC
-          final originalIndex = movieData.indexOf(movie);
+          if (favorites.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Text(
+                  'Belum ada film favorit.\nTap ikon hati di halaman detail buat nambahin.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
 
-          // 3. BUNGKUS DENGAN INKWELL AGAR BISA DI-KLIK
-          return InkWell(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => MovieDetailPage(
-                    movie: movie,
-                    index: originalIndex, // Kirim index asli
+          return ListView.builder(
+            padding: const EdgeInsets.all(12),
+            itemCount: favorites.length,
+            itemBuilder: (context, index) {
+              final Movie movie = favorites[index];
+              return Card(
+                margin: const EdgeInsets.only(bottom: 10),
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(8),
+                  leading: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: CachedNetworkImage(
+                      imageUrl: movie.posterUrl,
+                      width: 50,
+                      height: 70,
+                      fit: BoxFit.cover,
+                    ),
                   ),
+                  title: Text(movie.title),
+                  subtitle: Row(
+                    children: [
+                      const Icon(Icons.star, size: 14, color: Colors.amber),
+                      const SizedBox(width: 4),
+                      Text(movie.voteAverage.toStringAsFixed(1)),
+                    ],
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.favorite, color: Colors.red),
+                    onPressed: () => localStorageService.toggleFavorite(movie),
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MovieDetailPage(movie: movie),
+                      ),
+                    );
+                  },
                 ),
               );
             },
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      movie['posterUrl']!,
-                      width: 90,
-                      height: 130,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          width: 90, height: 130, color: Colors.grey[300],
-                          child: const Icon(Icons.broken_image, color: Colors.grey),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 5),
-                        Text(
-                          movie['title']!,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Released: ${movie['year']}',
-                          style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            const Icon(Icons.star, color: Colors.amber, size: 16),
-                            const SizedBox(width: 4),
-                            Text(
-                              movie['rating']!,
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
           );
         },
       ),
