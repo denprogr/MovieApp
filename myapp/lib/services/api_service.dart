@@ -3,10 +3,9 @@ import 'package:http/http.dart' as http;
 import '../models/movie.dart';
 
 /// Service buat komunikasi ke TMDB API.
-/// Daftar API key gratis di https://www.themoviedb.org/settings/api
 class ApiService {
   static const String _apiKey = '9c6bad8b262ad7de1edea575afcb92b9';  
-  static const String _baseUrl = 'https://api.themoviedb.org/3';
+  static const String _baseUrl = 'https://github.com/denprogr/MovieApp.git';
 
   /// Ambil daftar film populer (buat movie_list_page)
   Future<List<Movie>> fetchPopularMovies({int page = 1}) async {
